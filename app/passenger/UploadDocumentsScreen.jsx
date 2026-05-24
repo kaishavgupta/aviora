@@ -18,7 +18,7 @@ import {
  * UploadDocumentsScreen component.
  * Represents Step 3 (final) of the passenger assistance request wizard.
  * Handles picking document attachments (ID, Ticket, Medical Certificate),
- * uploading them to Firebase Cloud Storage, creating the Firestore request,
+ * uploading them to MongoDB GridFS via the upload API, creating the Firestore request,
  * updating links, and cleaning up draft states.
  * 
  * @param {Object} props - React Navigation props.

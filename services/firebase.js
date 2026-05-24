@@ -4,7 +4,7 @@
  * This module initializes the Firebase App and exports references to:
  * - Firebase Auth (with AsyncStorage persistence for React Native session persistence)
  * - Cloud Firestore (real-time NoSQL database)
- * - Cloud Storage (for uploading document and passport photos)
+ * - Cloud Firestore only (document files use MongoDB GridFS via uploadService)
  *
  * Configuration keys are placeholders and must be replaced with the actual credentials from the Firebase Console.
  */
@@ -34,11 +34,17 @@ try {
 // 2. local JS override (`env.local.js`) for quick local development
 // 3. Expo Constants manifest extra (set via app.config.js / eas.json)
 // 4. empty string fallback (prevents undefined runtime crashes)
+const getExtra = () =>
+  Constants?.expoConfig?.extra ||
+  Constants?.manifest2?.extra ||
+  Constants?.manifest?.extra ||
+  {};
+
 const env = (key) => {
   if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
   if (LOCAL_ENV && LOCAL_ENV[key]) return LOCAL_ENV[key];
-  if (Constants?.expoConfig?.extra && Constants.expoConfig.extra[key]) return Constants.expoConfig.extra[key];
-  if (Constants?.manifest?.extra && Constants.manifest.extra[key]) return Constants.manifest.extra[key];
+  const extra = getExtra();
+  if (extra[key]) return extra[key];
   return '';
 };
 
@@ -56,7 +62,6 @@ export const firebaseConfig = {
 let app = null;
 let auth = null;
 let db = null;
-
 if (!firebaseConfig.apiKey) {
   console.warn(
     '[firebase] Missing Firebase API key. Create env.local.js or set EXPO_FIREBASE_* keys in Expo/EAS extra or process.env.'

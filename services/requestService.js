@@ -172,6 +172,8 @@ const getStoragePathFromUrl = (url) => {
   if (!url) return null;
   try {
     const decoded = decodeURIComponent(url);
+    const gridFsMatch = decoded.match(/\/files\/([a-f0-9]{24})(?:\?|$)/i);
+    if (gridFsMatch?.[1]) return gridFsMatch[1];
     const marker = '/storage/v1/object/public/aviora-documents/';
     const index = decoded.indexOf(marker);
     if (index === -1) return null;

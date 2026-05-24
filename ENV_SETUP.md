@@ -27,4 +27,4 @@ Alternative: For managed Expo builds, add these keys to `app.config.js` or `eas.
 Notes
 - The app will check in this order for each key: `process.env` -> `env.local.js` -> `Expo Constants extra` -> fallback empty string.
 - Keep your real secrets out of git. Use CI secret stores for production builds.
-- For physical phone testing, `EXPO_GRIDFS_API_URL=http://localhost:4000` will not work. Use your computer LAN IP, for example `http://192.168.1.8:4000`, and keep the GridFS API server running.
+- **Document uploads:** MongoDB **GridFS** via `server/gridfsApi.js`. Deploy the API to Render (see `GRIDFS_SETUP.md`), then set `EXPO_GRIDFS_API_URL` to the public **HTTPS** URL and rebuild the APK. Firebase Storage is **not** used.

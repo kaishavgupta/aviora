@@ -8,13 +8,15 @@ const { GridFSBucket, MongoClient, ObjectId } = require('mongodb');
 const { Readable } = require('stream');
 
 const {
-  GRIDFS_API_PORT = '4000',
   MONGODB_URI,
   MONGODB_DB_NAME = 'aviora',
   GRIDFS_BUCKET_NAME = 'request_documents',
   GRIDFS_PUBLIC_BASE_URL,
   GRIDFS_API_KEY,
 } = process.env;
+
+// Cloud hosts (Render, Railway) set PORT; local dev uses GRIDFS_API_PORT or 4000
+const LISTEN_PORT = process.env.PORT || process.env.GRIDFS_API_PORT || '4000';
 
 if (!MONGODB_URI) {
   console.error('Missing MONGODB_URI in .env');
@@ -217,8 +219,8 @@ const start = async () => {
   const db = client.db(MONGODB_DB_NAME);
   bucket = new GridFSBucket(db, { bucketName: GRIDFS_BUCKET_NAME });
 
-  app.listen(Number(GRIDFS_API_PORT), '0.0.0.0', () => {
-    console.log(`GridFS API listening on http://localhost:${GRIDFS_API_PORT}`);
+  app.listen(Number(LISTEN_PORT), '0.0.0.0', () => {
+    console.log(`GridFS API listening on port ${LISTEN_PORT}`);
     if (GRIDFS_PUBLIC_BASE_URL) {
       console.log(`Public file base URL: ${GRIDFS_PUBLIC_BASE_URL}`);
     }

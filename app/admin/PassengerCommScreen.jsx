@@ -346,7 +346,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 120,
-    transform: [{ scaleY: -1 }], // match flatlist inversion
   },
   emptyTitle: {
     fontWeight: 'bold',
@@ -362,7 +361,6 @@ const styles = StyleSheet.create({
   },
   messageRow: {
     marginBottom: 12,
-    transform: [{ scaleY: -1 }],
   },
   dividerWrapper: {
     flexDirection: 'row',

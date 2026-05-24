@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { Text, TextInput, Button, ProgressBar, SegmentedButtons, HelperText, useTheme } from 'react-native-paper';
-// DateTimePicker removed for web compatibility test
-const DateTimePicker = null;
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Store & Service Imports

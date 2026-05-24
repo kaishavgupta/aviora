@@ -8,28 +8,40 @@ try {
   LOCAL_ENV = {};
 }
 
+const getExtra = () =>
+  Constants?.expoConfig?.extra ||
+  Constants?.manifest2?.extra ||
+  Constants?.manifest?.extra ||
+  {};
+
 const env = (key) => {
   if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
   if (LOCAL_ENV && LOCAL_ENV[key]) return LOCAL_ENV[key];
-  if (Constants?.expoConfig?.extra && Constants.expoConfig.extra[key]) return Constants.expoConfig.extra[key];
-  if (Constants?.manifest?.extra && Constants.manifest.extra[key]) return Constants.manifest.extra[key];
+  const extra = getExtra();
+  if (extra[key]) return extra[key];
   return '';
 };
 
 export const gridFsApiUrl = env('EXPO_GRIDFS_API_URL').replace(/\/$/, '');
 const gridFsApiKey = env('EXPO_GRIDFS_API_KEY');
 
+const isLocalOnlyUrl = (url) => {
+  if (!url) return true;
+  return (
+    url.includes('localhost') ||
+    url.includes('127.0.0.1') ||
+    /^https?:\/\/192\.168\.\d+\.\d+/.test(url) ||
+    /^https?:\/\/10\.\d+\.\d+\.\d+/.test(url)
+  );
+};
+
 /**
  * Helper function to extract a file extension from a URI string.
- *
- * @param {string} uri - The local file URI.
- * @returns {string} The lowercase file extension (e.g. 'jpg', 'png', 'pdf'), defaulting to 'jpg'.
  */
 export const getFileExtension = (uri) => {
   if (!uri) return 'jpg';
   const parts = uri.split('.');
   if (parts.length <= 1) return 'jpg';
-
   const lastPart = parts.pop();
   const ext = lastPart.split('?')[0].toLowerCase();
   return ext || 'jpg';
@@ -49,7 +61,14 @@ const getFilename = (uri, docType) => {
 
 export const validateUploadConfig = () => {
   if (!gridFsApiUrl) {
-    throw new Error('GridFS upload API is not configured. Set EXPO_GRIDFS_API_URL in .env and restart Expo with cache clear.');
+    throw new Error(
+      'Document upload API is not configured. Set EXPO_GRIDFS_API_URL to your deployed GridFS API (HTTPS), then rebuild the APK.'
+    );
+  }
+  if (isLocalOnlyUrl(gridFsApiUrl)) {
+    throw new Error(
+      'Document upload API is set to a local address. Deploy the GridFS API (see GRIDFS_SETUP.md) and set EXPO_GRIDFS_API_URL to the public HTTPS URL.'
+    );
   }
 };
 
@@ -63,7 +82,7 @@ const parseUploadError = async (response) => {
   }
 };
 
-const fetchWithTimeout = async (url, options = {}, timeoutMs = 20000) => {
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 45000) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -74,7 +93,7 @@ const fetchWithTimeout = async (url, options = {}, timeoutMs = 20000) => {
     });
   } catch (error) {
     if (error.name === 'AbortError') {
-      throw new Error(`Document upload API timed out after ${Math.round(timeoutMs / 1000)} seconds at ${gridFsApiUrl}.`);
+      throw new Error(`Upload timed out. Check your internet connection and that the API is running at ${gridFsApiUrl}.`);
     }
     throw error;
   } finally {
@@ -83,14 +102,7 @@ const fetchWithTimeout = async (url, options = {}, timeoutMs = 20000) => {
 };
 
 /**
- * Uploads a single document file to the GridFS API.
- *
- * @param {string} uri - The local file URI.
- * @param {string} requestId - The Firestore request document ID.
- * @param {string} docType - The document classification ('id' | 'ticket' | 'medical').
- * @param {string} uid - The user's UID.
- * @param {Function} [onProgress] - Optional callback receiving progress percentage (0-100).
- * @returns {Promise<{downloadURL: string, path: string, docType: string}>} File details on success.
+ * Uploads a single document to MongoDB GridFS via the Node upload API.
  */
 export const uploadDocument = async (uri, requestId, docType, uid, onProgress) => {
   validateUploadConfig();
@@ -119,8 +131,9 @@ export const uploadDocument = async (uri, requestId, docType, uid, onProgress) =
       body: formData,
     });
   } catch (error) {
+    if (error.message?.includes('timed out')) throw error;
     throw new Error(
-      `Cannot reach document upload API at ${gridFsApiUrl}. Start it with "npm run gridfs:api" and make sure your phone and computer are on the same Wi-Fi.`
+      `Cannot reach the document upload server at ${gridFsApiUrl}. Ensure the GridFS API is deployed and online (see GRIDFS_SETUP.md).`
     );
   }
 
@@ -141,23 +154,11 @@ export const uploadDocument = async (uri, requestId, docType, uid, onProgress) =
   };
 };
 
-/**
- * Uploads multiple document files concurrently and tracks progress individually.
- *
- * @param {Array<{uri: string, docType: string}>} documents - Array of document descriptor objects.
- * @param {string} requestId - The Firestore request document ID.
- * @param {string} uid - The user's UID.
- * @param {Function} [onProgress] - Optional callback receiving progress percentage and docType.
- * @returns {Promise<Array<{downloadURL: string, path: string, docType: string}>>} List of successfully uploaded files.
- */
 export const uploadMultipleDocuments = async (documents, requestId, uid, onProgress) => {
   const uploadPromises = documents.map((doc) => {
     if (!doc.uri) return Promise.resolve(null);
-
     return uploadDocument(doc.uri, requestId, doc.docType, uid, (percent) => {
-      if (onProgress) {
-        onProgress(percent, doc.docType);
-      }
+      if (onProgress) onProgress(percent, doc.docType);
     });
   });
 
@@ -168,21 +169,20 @@ export const uploadMultipleDocuments = async (documents, requestId, uid, onProgr
 /**
  * Deletes a file from GridFS through the API.
  *
- * @param {string} fileId - GridFS file ObjectId as a string.
- * @returns {Promise<void>}
+ * @param {string} fileId - GridFS file ObjectId string.
  */
 export const deleteDocument = async (fileId) => {
   validateUploadConfig();
-  if (!fileId) return;
+  if (!fileId || fileId.includes('://')) return;
 
   let response;
   try {
     response = await fetchWithTimeout(`${gridFsApiUrl}/files/${fileId}`, {
       method: 'DELETE',
       headers: gridFsApiKey ? { Authorization: `Bearer ${gridFsApiKey}` } : undefined,
-    }, 10000);
+    }, 15000);
   } catch (error) {
-    throw new Error(`Cannot reach document upload API at ${gridFsApiUrl}.`);
+    throw new Error(`Cannot reach the document upload server at ${gridFsApiUrl}.`);
   }
 
   if (!response.ok && response.status !== 404) {

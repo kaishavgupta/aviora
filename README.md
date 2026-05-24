@@ -1,3 +1,166 @@
+# Mobile App — Production-ready README
+
+Overview
+--------
+
+This repository is a React Native (Expo) mobile application used for assisting passengers and staff (admin) to create and manage assistance requests. The app uses Firebase for authentication and Firestore for data, GridFS (Node/Express) for file storage, and Supabase for select storage/interaction. This README is written to production standards and explains setup, architecture, testing, screenshots and video requirements, and deployment considerations.
+
+Table of contents
+- Quick start
+- Environment & configuration
+- Folder structure and important files
+- Scripts
+- Architecture & data flow
+- Features and screens (what to capture)
+- Screenshots & video guidance (how to capture + filenames)
+- Testing & seed data
+- Production checklist
+- Contributing & contact
+
+Quick start
+-----------
+
+Prerequisites
+- Node.js 18+ (or LTS) and npm
+- Yarn (optional)
+- Expo CLI: `npm install -g expo-cli` (or use `npx expo`)
+- Android Studio / Xcode or Expo Go on a device
+
+Install and run (development)
+-----------------------------
+
+```bash
+# install deps
+npm install
+
+# start Metro/Expo
+npm start
+
+# open on Android emulator/device
+npm run android
+
+# open on iOS simulator/device
+npm run ios
+
+# run web (optional)
+npm run web
+```
+
+Environment & configuration
+---------------------------
+
+- Copy `env.local.js.example` to `env.local.js` and fill the values for Firebase, Supabase and any API endpoints.
+- Important files that read envs: [services/firebase.js](services/firebase.js), [services/supabase.js](services/supabase.js), and server code in [server/gridfsApi.js](server/gridfsApi.js).
+- Do NOT commit secrets. Use CI/CD secrets for production builds.
+
+Folder structure (high level)
+----------------------------
+
+- `app/` — feature screens grouped by role
+  - `admin/` — admin screens (assign staff, reports, onboard passenger, etc.)
+  - `passenger/` — passenger flow (home, requests, upload docs, tracking)
+- `assets/` — static assets
+- `components/` — reusable UI components (`DocumentUploader.jsx`, `RequestCard.jsx`, `ScannerModal.jsx`, etc.)
+- `navigation/` — navigators (`RootNavigator.jsx`, `AdminNavigator.jsx`, `PassengerNavigator.jsx`)
+- `services/` — API and integration logic (`authService.js`, `requestService.js`, `uploadService.js`, `notificationService.js`, etc.)
+- `server/` — Express GridFS API (`gridfsApi.js`) used for larger file uploads
+- `scripts/` — helpers for development/testing (`createTestUsers.js`, `seedFirestore.js`)
+- `store/` — lightweight global state stores using `zustand` (`authStore.js`, `requestStore.js`, `themeStore.js`)
+
+Important scripts
+-----------------
+- `npm start` — starts Expo (Metro)
+- `npm run android` — open on Android via Expo
+- `npm run ios` — open on iOS via Expo
+- `npm run web` — run web build (expo)
+- `npm run seed:test-users` — run `scripts/createTestUsers.js` to populate sample users
+- `npm run gridfs:api` — developer helper to run `server/gridfsApi.js` locally
+
+Architecture & data flow
+------------------------
+
+- Client: Expo React Native app. Navigation is split by role: `RootNavigator` routes to `AdminNavigator` or `PassengerNavigator`.
+- Auth: Firebase Auth managed inside `services/authService.js`. User profile and role are stored in Firestore.
+- Data: Firestore stores requests, assignments, and notifications. See `requestService.js` and `staffService.js`.
+- File uploads: Files and large blobs are uploaded to a GridFS-backed Express endpoint (`server/gridfsApi.js`) or via Supabase depending on the flow (`services/uploadService.js`, `services/supabase.js`).
+- State: Uses `zustand` stores in `store/` to keep client state minimal and easy to reason about.
+
+Features
+--------
+
+- Passenger flows: create assistance requests, upload documents, view request status, track progress.
+- Admin flows: view requests, assign staff, update statuses, onboard passengers, daily reports.
+- Notifications: push/local notifications using `expo-notifications` and `notificationService.js`.
+- QR code and scanning utilities: used for confirmations and request lookups.
+
+Screens & what to capture (I'll guide screenshots you should insert)
+---------------------------------------------------------------
+
+Capture clear, high-resolution screenshots for the following flows (filename convention suggested):
+
+- Splash / App launch — `screenshots/01-splash.png`
+- Passenger: Login — `screenshots/02-passenger-login.png`
+- Passenger: Signup / Onboarding — `screenshots/03-passenger-signup.png`
+- Passenger: Home / Create Request entry — `screenshots/04-passenger-home.png`
+- Passenger: Add Trip / Assistance form — `screenshots/05-passenger-add-trip.png`
+- Passenger: Upload Documents / DocumentUploader — `screenshots/06-upload-docs.png`
+- Passenger: Request Tracking / Status Timeline — `screenshots/07-request-tracking.png`
+- Admin: Staff Login / Admin List — `screenshots/08-admin-login.png`
+- Admin: Request List — `screenshots/09-admin-request-list.png`
+- Admin: Request Detail / Assign Staff — `screenshots/10-admin-request-detail.png`
+- Admin: Daily Report screen — `screenshots/11-admin-daily-report.png`
+- Camera / Scanner modal (QR or document) — `screenshots/12-scanner.png`
+
+Guidance for screenshots
+- Use a 9:16 phone ratio (1080x1920 recommended) and consistent backgrounds.
+- Remove any PII or test tokens before capturing.
+- Prefer portrait screenshots. Save them under a top-level `screenshots/` folder.
+- For each screenshot add a one-line caption in `screenshots/README.md` describing the user action shown.
+
+Video demo guidance
+-------------------
+
+- Produce a short walkthrough video (60–120 seconds) named `demo.mp4` showing the main user journeys:
+  1. Launch app -> Login (passenger)
+  2. Create & submit assistance request
+  3. Upload documents flow
+  4. Switch to admin (or show admin flow) -> assign staff -> update status
+  5. Show request status update on passenger side
+- Record with stable voice-over describing each step. Crop to keep focus on app UI.
+- Upload the video as `demo/demo.mp4` in the repo or external host (YouTube/Drive) and add the link to this README under "Live demo".
+
+Testing & seed data
+-------------------
+
+- Use `npm run seed:test-users` to create test users and sample data for manual QA.
+- Automated tests: this repo does not include unit tests yet. Add Jest + React Native Testing Library for component/unit tests.
+
+Production checklist (must-haves before release)
+----------------------------------------------
+
+- Secure environment variables in CI/CD; never commit `env.local.js`.
+- Harden Firestore rules: ensure role-based access and least privilege.
+- Configure GridFS/Express behind HTTPS and authenticate upload endpoints.
+- Set up error reporting (Sentry / App Center), analytics and performance monitoring.
+- App signing and provisioning for iOS & Android stores.
+- CI pipeline: lint, type-check (if added), run tests, build release artifacts.
+- Privacy: update privacy policy for file uploads and notifications.
+
+Contributing
+------------
+
+- Open an issue for bugs or feature requests.
+- Use feature branches and open PRs with descriptive titles and test steps.
+
+Contact
+-------
+
+If you need me to: add actual screenshot files, compose the demo video script, or expand any section into developer docs (API spec, deployment scripts, CI config), let me know which item to do next.
+
+License
+-------
+
+This repository is provided under the terms in `LICENSE`.
 # Aviora — Airport Passenger Assistance Platform
 
 Aviora is a complete, role-based mobile application designed to assist airport passengers requiring special support (visual impairment, wheelchair assistance, etc.). The platform connects passengers with support staff and operations administrators in real-time, automating requests tracking, communications, and operations analytics.

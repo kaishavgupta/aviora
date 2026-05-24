@@ -1,81 +1,99 @@
-# MongoDB GridFS Setup
+# MongoDB GridFS document storage
 
-The mobile app uploads files to a Node API, and the API stores them in MongoDB GridFS. Do not put `MONGODB_URI` directly in the mobile app.
+Passenger documents are stored in **MongoDB GridFS** (not Firebase Storage). The mobile app calls a small **Node/Express API**; the API writes files to Atlas.
 
-## Create a Free MongoDB Atlas Cluster
+## Architecture
 
-1. Go to MongoDB Atlas and create/sign in to an account.
-2. Create a new project.
-3. Create a free `M0` cluster.
-4. Create a database user with a username and password.
-5. Add your current IP address in Network Access.
-   - For quick local testing, you can temporarily allow `0.0.0.0/0`.
-   - Tighten this before production.
-6. Open `Connect` -> `Drivers` and copy the Node.js connection string.
-7. Replace `<username>`, `<password>`, and cluster host in `.env`:
+```text
+Mobile APK  --HTTPS-->  GridFS API (Render/Railway/local)  -->  MongoDB Atlas (GridFS)
+                              |
+Firestore  <-- request metadata (documentUrls, documentPaths)
+Firebase Auth  <-- login only (free tier)
+```
+
+## 1. MongoDB Atlas (free M0)
+
+1. Create a cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
+2. Database user + password.
+3. **Network Access** → allow `0.0.0.0/0` (required for cloud API hosts like Render).
+4. Copy the connection string into your server env:
 
 ```env
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/aviora?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://USER:PASS@cluster.mongodb.net/aviora?retryWrites=true&w=majority
 ```
 
-MongoDB documents note that Atlas free clusters use the `M0` tier, and the official Node driver supports GridFS through `GridFSBucket`.
+## 2. Deploy the upload API (required for APK / any network)
 
-## Configure Local Environment
+Local `192.168.x.x` URLs only work on the same Wi‑Fi. For real phones on mobile data, deploy the API publicly.
 
-For Android/iOS physical device testing, use your computer LAN IP:
+### Option A — Render (free web service)
 
-```env
-EXPO_GRIDFS_API_URL=http://192.168.1.8:4000
-GRIDFS_PUBLIC_BASE_URL=http://192.168.1.8:4000
-```
+1. Push this repo to GitHub.
+2. [render.com](https://render.com) → **New** → **Blueprint** → connect repo (uses `render.yaml`),  
+   **or** **New Web Service** → root directory = repo root, start: `node server/gridfsApi.js`.
+3. Set environment variables:
 
-Use the same token for app and server during local testing:
+| Variable | Example |
+|----------|---------|
+| `MONGODB_URI` | your Atlas connection string |
+| `MONGODB_DB_NAME` | `aviora` |
+| `GRIDFS_BUCKET_NAME` | `request_documents` |
+| `GRIDFS_API_KEY` | long random secret (same in app) |
+| `GRIDFS_PUBLIC_BASE_URL` | `https://aviora-gridfs-api.onrender.com` (your service URL, no trailing slash) |
 
-```env
-EXPO_GRIDFS_API_KEY=change-this-dev-upload-token
-GRIDFS_API_KEY=change-this-dev-upload-token
-```
+4. After deploy, open `https://YOUR-SERVICE.onrender.com/health` → should return `{"ok":true}`.
 
-## Install Dependencies
-
-```bash
-npm install
-```
-
-## Start the GridFS API
+### Option B — Local dev (same Wi‑Fi only)
 
 ```bash
 npm run gridfs:api
 ```
 
-Health check:
-
-```text
-http://localhost:4000/health
+```env
+EXPO_GRIDFS_API_URL=http://192.168.1.8:4000
+GRIDFS_PUBLIC_BASE_URL=http://192.168.1.8:4000
+EXPO_GRIDFS_API_KEY=your-dev-token
+GRIDFS_API_KEY=your-dev-token
 ```
 
-## Start Expo
+## 3. Point the mobile app at the public API
 
-In another terminal:
+In `app.json` → `expo.extra` (or `.env` for local Expo):
+
+```json
+"EXPO_GRIDFS_API_URL": "https://aviora-gridfs-api.onrender.com",
+"EXPO_GRIDFS_API_KEY": "same-secret-as-GRIDFS_API_KEY-on-server"
+```
+
+Rebuild the APK:
 
 ```bash
-npx expo start -c
+npm run build:apk
 ```
 
-## How Files Are Stored
+## 4. How files are stored
 
-GridFS creates two MongoDB collections using the bucket name:
+GridFS collections:
 
 ```text
 request_documents.files
 request_documents.chunks
 ```
 
-The Firestore request stores:
+Firestore request document:
 
 ```text
-documentUrls: ["http://.../files/<gridfs-file-id>"]
+documentUrls: ["https://.../files/<gridfs-file-id>"]
 documentPaths: ["<gridfs-file-id>"]
 ```
 
-When an assistance request is completed/cancelled, the app calls the API to delete those GridFS files and clears file references from Firestore.
+## API endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/health` | Health check |
+| POST | `/files` | Upload (multipart: file, requestId, uid, docType) |
+| GET | `/files/:fileId` | Download / view |
+| DELETE | `/files/:fileId` | Delete (requires API key) |
+
+Max file size: **5MB**. Types: PDF, PNG, JPEG.

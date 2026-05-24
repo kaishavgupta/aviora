@@ -1,8 +1,9 @@
 {
   "expo": {
+    "owner": "nexusbinary",
     "name": "Aviora",
     "slug": "aviora",
-    "version": "1.0.0",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -19,6 +20,7 @@
       }
     },
     "android": {
+      "package": "com.internship.aviora",
       "adaptiveIcon": {
         "backgroundColor": "#1A3C6E",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -43,8 +45,35 @@
           "cameraPermission": "Allow Aviora to use your camera to photograph travel document verification copies."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Aviora to use your camera for QR scanning and document capture."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1A3C6E"
+        }
+      ],
       "@react-native-community/datetimepicker",
-      "expo-asset"
-    ]
+      "expo-asset",
+      "expo-font"
+    ],
+    "extra": {
+      "EXPO_FIREBASE_API_KEY": "AIzaSyAPd6FB3N1oXa4W0ypynMObNhDSUjRRTUc",
+      "EXPO_FIREBASE_AUTH_DOMAIN": "mobile-app-intern.firebaseapp.com",
+      "EXPO_FIREBASE_PROJECT_ID": "mobile-app-intern",
+      "EXPO_FIREBASE_STORAGE_BUCKET": "mobile-app-intern.firebasestorage.app",
+      "EXPO_FIREBASE_MESSAGING_SENDER_ID": "661987865346",
+      "EXPO_FIREBASE_APP_ID": "1:661987865346:web:28d0f82453a4b8f906081b",
+      "EXPO_GRIDFS_API_URL": "https://aviora-1.onrender.com",
+      "EXPO_GRIDFS_API_KEY": "change-this-dev-upload-token",
+      "eas": {
+        "projectId": "04c5aef3-01ce-48bf-9def-11169f2e339f"
+      }
+    }
   }
 }
