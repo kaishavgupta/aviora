@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is authenticated.
+    // Checks that the auth context is not null.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if the logged-in user matches the given userId.
+    // Compares auth UID to the resource parameter.
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if user has staff or admin role in their profile.
+    // Fetches the user profile doc and inspects the role field.
+    function isStaffOrAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isAssignedStaff() {
+      return isAuthenticated() &&
+        resource.data.assignedStaff.uid == request.auth.uid;
+    }
+
+    // Rules for User Profile collection.
+    // Readable by any authenticated user (e.g. during authentication validation).
+    // Writable by the profile owner or staff/admin members.
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    // Rules for Support Staff collection.
+    // Contains staff details, contact info, and duty availability flags.
+    // Readable only by staff/admin (to query available staff for request assignment).
+    // Writable by the staff owner (availability switch) or admins.
+    match /staff/{staffId} {
+      allow read: if isOwner(staffId) || isAdmin();
+      allow write: if isOwner(staffId) || isAdmin();
+    }
+
+    // Rules for Assistance Requests collection.
+    // Read/Write access allowed if:
+    // 1. The user is a staff member or administrator.
+    // 2. The request userId matches the logged-in user's UID (resource or incoming request.resource).
+    match /requests/{requestId} {
+      allow create: if isAdmin() ||
+        (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+      allow read: if isAdmin() ||
+        isAssignedStaff() ||
+        (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() ||
+        isAssignedStaff() ||
+        (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+        
+      // Messages subcollection for real-time in-app passenger-staff chat.
+      // Accessible (read/write) if:
+      // 1. The user is staff/admin.
+      // 2. The user is the passenger who owns the parent request.
+      match /messages/{messageId} {
+        allow read, write: if isAdmin() ||
+          (isAuthenticated() && get(/databases/$(database)/documents/requests/$(requestId)).data.assignedStaff.uid == request.auth.uid) ||
+          (isAuthenticated() && get(/databases/$(database)/documents/requests/$(requestId)).data.userId == request.auth.uid);
+      }
+    }
+
+    // Rules for Notifications subcollection.
+    // Stored under /notifications/{userId}/items/{notificationId}
+    // Read/Write: Passengers can access and update their own notifications (e.g. read list, mark read, delete).
+    // Create: Staff/Admin can write notifications for passengers when updating request statuses.
+    match /notifications/{userId}/items/{notificationId} {
+      allow read, write: if isOwner(userId);
+      allow create: if isStaffOrAdmin();
+    }
+  }
+}
