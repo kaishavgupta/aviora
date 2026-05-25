@@ -1,4 +1,4 @@
-# Mobile App — Production-ready README
+# Aviora — Airport Passenger Assistance Platform
 
 Overview
 --------
@@ -111,13 +111,9 @@ Capture clear, high-resolution screenshots for the following flows (filename con
 - Admin: Daily Report screen — `screenshots/11-admin-daily-report.png`
 - Camera / Scanner modal (QR or document) — `screenshots/12-scanner.png`
 
-Guidance for screenshots
-- Use a 9:16 phone ratio (1080x1920 recommended) and consistent backgrounds.
-- Remove any PII or test tokens before capturing.
-- Prefer portrait screenshots. Save them under a top-level `screenshots/` folder.
-- For each screenshot add a one-line caption in `screenshots/README.md` describing the user action shown.
 
-Video demo guidance
+
+<!-- Video demo guidance
 -------------------
 
 - Produce a short walkthrough video (60–120 seconds) named `demo.mp4` showing the main user journeys:
@@ -127,7 +123,7 @@ Video demo guidance
   4. Switch to admin (or show admin flow) -> assign staff -> update status
   5. Show request status update on passenger side
 - Record with stable voice-over describing each step. Crop to keep focus on app UI.
-- Upload the video as `demo/demo.mp4` in the repo or external host (YouTube/Drive) and add the link to this README under "Live demo".
+- Upload the video as `demo/demo.mp4` in the repo or external host (YouTube/Drive) and add the link to this README under "Live demo". -->
 
 Testing & seed data
 -------------------
